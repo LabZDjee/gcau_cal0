@@ -30,7 +30,7 @@ impl ProcessResult {
   fn to_string(&self) -> String {
     match self {
       ProcessResult::ConnectionFailure => "Unable to reach target".to_string(),
-      ProcessResult::LoginFailure => "Enable to log to target".to_string(),
+      ProcessResult::LoginFailure => "Unable to log to target".to_string(),
       ProcessResult::TaskUnsuccessful => "Could not complete process on target".to_string(),
       ProcessResult::UncompletedLogout => "Task done (though failure at logout)".to_string(),
       ProcessResult::Success => "Task successfully completed".to_string(),
@@ -323,7 +323,7 @@ fn main() {
         }
         // time to login as admin through a password agnostic backdoor process
         stage = ProcessResult::LoginFailure;
-        let cmd = "@/BKDOOR".to_string();
+        let cmd = "@&1/BKDOOR".to_string();
         vanish_if_false!(ctx.send_cmd(cmd));
         let reply = ctx.read_till_cr();
         let reply = ctx.check_reply_against(reply, r"/BKDOOR", "BKDOOR");
