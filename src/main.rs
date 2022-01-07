@@ -328,7 +328,7 @@ fn main() {
         let reply = ctx.read_till_cr();
         let reply = ctx.check_reply_against(reply, r"/BKDOOR", "BKDOOR");
         let mut correct_reply: String = "".to_string();
-        // check reply to be Ok, if so pass on to correct_reply, otherwise dies gratefully
+        // check reply to be Ok, if so pass on to correct_reply, otherwise dies gracefully
         macro_rules! vanish_if_reply_wrong {
           ($reply:ident) => {
             match $reply {
