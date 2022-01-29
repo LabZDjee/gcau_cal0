@@ -256,11 +256,11 @@ fn main() {
   }
   thread::sleep(Duration::from_secs(2));
   // will launch a worker thread for each detected serial port
-  let (tx, rx) = channel(); // channel to communicate from worker threads to main thread
+  let (th_tx, th_rx) = channel(); // channel to communicate from worker threads to main thread
   let number_of_ports = ports.len();
   for port in ports {
     let port_name = port.port_name.clone();
-    let tx = tx.clone();
+    let th_tx = th_tx.clone();
     let _ = thread::Builder::new()
       .name(format!("worker thread on {}", port_name))
       .spawn(move || {
@@ -273,31 +273,39 @@ fn main() {
           // for each baudrate tries a successful 'ping'
           let baudrate = baudrates(bdi);
           if baudrate == None {
-            let _ = tx.send((port_name, stage)); // no baudrate is correct, give up
+            let _ = th_tx.send((port_name, stage)); // no baudrate is correct, give up
             return;
           }
           let baudrate = baudrate.unwrap();
           println_if_verbose!("[{}] trying connection at {} bps", port_name, baudrate);
-          let port = serialport::new(&port_name, baudrate)
+          let port;
+          match serialport::new(&port_name, baudrate)
             .timeout(Duration::from_millis(500))
             .open()
-            .expect("Failed to open port");
+          {
+            Ok(open_port) => port = open_port,
+            Err(_) => {
+              println_if_verbose!("[{}] refuses to open", port_name);
+              let _ = th_tx.send((port_name, stage));
+              return;
+            }
+          }
           // owns port in SerialAppContext
           let mut ctx0 = SerialAppContext::new(port, &port_name);
           // echo command
           let cmd = "@".to_string();
-          ctx0.send_cmd(cmd.clone()); // dry-run to clear serial port
+          ctx0.send_cmd(cmd.clone()); // dry-run to clear serial port of any trash stuck
           println_if_verbose!("[{}] command: {}", ctx0.dev_name, cmd);
           if !ctx0.send_cmd(cmd) {
             println_if_verbose!("[{}] failure sending command", ctx0.dev_name);
-            std::mem::drop(ctx0.port); // closes serial port
+            std::mem::drop(ctx0.port); // trick to close serial port
             continue;
           }
           let reply = ctx0.read_till_cr();
           let reply = ctx0.check_reply_against(reply, r"/ECHO/", "PING (ECHO)");
           if let Err(err_msg) = reply {
             println_if_verbose!("{}", err_msg);
-            std::mem::drop(ctx0.port);
+            std::mem::drop(ctx0.port); // closes serial port
             continue;
           }
           println_if_verbose!("[{}] reply: {}", ctx0.dev_name, reply.unwrap());
@@ -316,7 +324,7 @@ fn main() {
                 ctx.send_cmd(cmd);
                 thread::sleep(Duration::from_millis(500));
               }
-              let _ = tx.send((port_name, stage));
+              let _ = th_tx.send((port_name, stage));
               return;
             }
           };
@@ -445,7 +453,7 @@ fn main() {
         vanish_if_reply_wrong!(reply);
         println_if_verbose!("[{}] reply: {}", ctx.dev_name, correct_reply);
         stage = ProcessResult::Success;
-        let _ = tx.send((port_name, stage));
+        let _ = th_tx.send((port_name, stage));
       });
   }
   for _ in 0..number_of_ports {
@@ -453,7 +461,7 @@ fn main() {
     if nb_of_expected_targets != None && nb_of_completions >= nb_of_expected_targets.unwrap() {
       break;
     }
-    match rx.recv_timeout(Duration::from_secs(120)) {
+    match th_rx.recv_timeout(Duration::from_secs(120)) {
       Ok((who, result)) => {
         // who = thread name, result is a ProcessResult
         let id_message = format!("Thread on {}", who);
