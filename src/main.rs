@@ -244,7 +244,7 @@ fn main() {
     );
   }
   if prompt {
-    println!("Connect 10-Ohm resistors on shunts, if on test bench 703864, set shunts to off (Ib+ centered and ISr0 at 1)");
+    println!("Connect 10-Ohm resistors on shunts (connector X5 of the gCAU),\n if on test bench 703864, set shunts to off (Ib+ centered and ISr0 at 1)");
     print!("Ready to go? Y/n ");
     io::stdout().flush().unwrap();
     let mut should_be_yes = String::new();
